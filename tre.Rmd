@@ -21,21 +21,19 @@ knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
 
 # Carregar pacotes
 ```{r}
-library(psych)
-library(tidyverse)
-library(readxl)
-library(expss)
-library(stats)
-library(mirt)
-library(knitr)
-# library(pander)
+pacman::p_load(psych,tidyverse,readxl,expss,stats,mirt,knitr,latticeExtra)
+
+getOption("repos")
+
+writeLines(toBibtex(citation()), "R.bib")
+
+bib <- toBibtex(citation("psych"))
+writeLines(bib, "psych.bib")
 ```
 
 # Importar o banco de dados
 ```{r}
 df1 <- read_xlsx("TRE_analise.xlsx")
-
-glimpse(df1)
 ```
 
 # Transformar DASS em números
@@ -151,13 +149,45 @@ names(df1) %>% as.data.frame()
 # Análise fatorial
 ```{r}
 
-df1 %>% select(c(85:123)) %>% scree(pc = FALSE)
+# dados_teste <- df1 %>% 
+#   select(85:123) %>% 
+#   select(where(~ var(.) >= 0.05 & mean(.) > 0.10 & mean(.) < 0.90))
+# 
+# # 2. Análise paralela mais robusta
+# ap_resultado <- fa.parallel(
+#   dados_teste,
+#   cor = "tet",
+#   fm = "minres",
+#   fa = "fa",
+#   n.iter = 100,
+#   main = "Análise Paralela - Teste de Regulação Emocional"
+# )
+# 
+# ap_resultado$fa.values
+# 
+# efa_tre1 <- fa(dados_teste,fm = "uls",rotate = "oblimin",cor = "tet", nfactors = 2)
+# print.psych(efa_tre1, cut = .3)
+# 
+# sel2 <- 
+#   unclass(efa_tre1$Structure) %>% 
+#   as.data.frame() %>% 
+#   rownames_to_column(var = "itens") %>% 
+#   filter(ULS1>.3 | ULS2>.3)
+# 
+# dados_teste2 <- as.vector(dados_teste2$itens)
+# 
+# efa_tre1 <- fa(dados_teste2,fm = "uls",rotate = "oblimin",cor = "tet", nfactors = 2)
+# print.psych(efa_tre1, cut = .3)
 
-efa1 <- df1 %>% select(85:123) %>% fa(nfactors = 2,
-                              cor = "tet",
-                              fm = "pa",
-                              rotate = "geominQ")
+# ========================================================
 
+fa.parallel(df1 %>% select(85:123), cor = "cor")
+
+# df1 %>% select(85:123) %>% fa(nfactors = 2, cor = "tet", fm = "ml", rotate = "geominQ")
+df1 %>% select(85:123) %>% fa(nfactors = 2, cor = "tet", fm = "pa", rotate = "geominQ")
+# df1 %>% select(85:123) %>% fa(nfactors = 2, cor = "tet", fm = "mires", rotate = "geominQ")
+
+print.psych(efa1)
 # eliminanção dos itens 4,6,7,8,14,15,16,23,27,28,31,33,35
 
 # novo scree
@@ -450,7 +480,7 @@ tre_cod_40) %>%
   fa(nfactors = 2,
      cor = "tet",
      fm = "pa",
-     rotate = "geominQ")
+     rotate = "oblimin")
 
 efa1$loadings
 efa2$loadings
@@ -459,21 +489,25 @@ efa4$loadings
 efa5$loadings
 efa6$loadings
 
+print.psych(efa6,cut = .3
+            )
 # Exportar banco de dados para fazer EFA no Factor e MPlus
 # writexl::write_xlsx(df1[,85:123],"tre_dic.xlsx")
 # write_csv(df1[,85:123],"tre_dic.csv")
+citation("psych")
 
 ```
 
 # Fidedignidade
 ```{r}
+
 df1 %>% names() %>% as.data.frame()
 
 # Fidedignidade do fator 1 (Estratégias Ineficazes)
-df1 %>% select(86,93,103,107,108,112,113,115,117,122,123) %>% omega(poly = TRUE)
+df1 %>% select(86,93,103,107,108,112,113,115,117,122,123) %>% omega(poly = TRUE, plot = FALSE, fm = "ml")
 
 # Fidedignidade do fator 2 (Estratégias Eficazes)
-df1 %>% select(87,95,96,100,101,104,105,109,120,121) %>% omega(poly = TRUE)
+df1 %>% select(87,95,96,100,101,104,105,109,120,121) %>% omega(poly = TRUE, plot = FALSE, fm = "ml")
 
 # Cálculo das pontuações nos fatores
 
@@ -485,9 +519,14 @@ df1$TRE_efi <- df1 %>% select(87,95,96,100,101,104,105,109,120,121) %>% rowSums(
 
 ```
 
+# Estatísticas descritivas dos fatores obtidos na EFA
+```{r}
+df1 %>% select(TRE_ine,TRE_efi) %>% describe()
+```
+
+
 # Validade com base nas relações com variáveis externas
 ```{r}
-names(df1) %>% as.data.frame()
 correlações <- corr.test(df1[124:130])
 
 correlações$stars %>% knitr::kable()
@@ -604,8 +643,6 @@ names(df1) %>% as.data.frame()
 
 install.packages("janitor")
 library(janitor)
-
-
 
 df1 %>%          
   tabyl(sexo) %>%
